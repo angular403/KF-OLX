@@ -544,26 +544,28 @@ CREATE TABLE ad_images (
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-house"></i> Beranda</a>
-                    </li> -->
-                    <!-- <li class="nav-item">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.php"><i class="bi bi-house"></i> Beranda</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-grid"></i> Kategori</a>
-                    </li> -->
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-plus-circle"></i> Pasang Iklan</a>
                     </li>
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-heart"></i> Favorit</a>
-                    </li> -->
                     <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-person-circle"></i> Masuk</a>
+                        <a class="nav-link" href="#"><i class="bi bi-heart"></i> Favorit</a>
                     </li>
-                    <!-- <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-person-plus"></i> Daftar</a>
-                    </li> -->
                 </ul>
+                <div class="d-flex gap-2 align-items-center">
+                    <a href="login.php" class="btn btn-outline-primary px-4 py-2">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Masuk
+                    </a>
+                    <a href="register.php" class="btn btn-primary px-4 py-2">
+                        <i class="bi bi-person-plus me-2"></i>Daftar
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -575,8 +577,9 @@ CREATE TABLE ad_images (
                 <div class="col-lg-8">
                     <h1 class="text-center mb-4">Temukan Barang Impian Anda</h1>
                     <p class="text-center mb-4">Jual beli online terpercaya di seluruh Indonesia</p>
-                    
+                   
                     <form class="d-flex">
+                        
                         <input class="form-control form-control-lg me-2" type="search" placeholder="Cari barang yang Anda inginkan..." aria-label="Search">
                         <select class="form-select form-select-lg me-2" style="max-width: 200px;">
                             <option selected>Semua Kategori</option>
@@ -657,7 +660,7 @@ CREATE TABLE ad_images (
                             <span class="featured-badge">TERLARIS</span>
                         </div>
                         <div class="card-body">
-                            <h6 class="card-title">iPhone 13 Pro Max 256GB</h6>
+                            <h6 class="card-title"><a href="detail.php">iPhone 13 Pro Max 256GB</a></h6>
                             <p class="card-text text-muted small">Mulus, lengkap, garansi resmi...</p>
                             <div class="price-tag mb-2">Rp 15.000.000</div>
                             <div class="d-flex justify-content-between align-items-center">
@@ -865,13 +868,13 @@ CREATE TABLE ad_images (
                 <div class="col-md-4 mb-4">
                     <h6>Download Aplikasi</h6>
                     <p>Dapatkan pengalaman terbaik dengan aplikasi mobile kami</p>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-light">
-                            <i class="bi bi-apple"></i> App Store
-                        </button>
-                        <button class="btn btn-outline-light">
-                            <i class="bi bi-google-play"></i> Google Play
-                        </button>
+                    <div class="d-flex gap-2 align-items-center">
+                        <a href="login.php" class="btn btn-outline-primary px-4 py-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Masuk
+                        </a>
+                        <a href="register.php" class="btn btn-primary px-4 py-2">
+                            <i class="bi bi-person-plus me-2"></i>Daftar
+                        </a>
                     </div>
                 </div>
             </div>
