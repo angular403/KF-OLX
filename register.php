@@ -1,3 +1,77 @@
+<?php
+require_once 'config.php';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get and sanitize form data
+    $firstName = sanitizeInput($_POST['firstName'] ?? '');
+    $lastName = sanitizeInput($_POST['lastName'] ?? '');
+    $email = sanitizeInput($_POST['email'] ?? '');
+    $phone = sanitizeInput($_POST['phone'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirmPassword'] ?? '';
+    $terms = isset($_POST['terms']) ? 1 : 0;
+    $newsletter = isset($_POST['newsletter']) ? 1 : 0;
+    
+    // Validation
+    $errors = [];
+    
+    if (empty($firstName)) {
+        $errors[] = 'Nama depan harus diisi';
+    }
+    
+    // if (empty($lastName)) {
+    //     $errors[] = 'Nama belakang harus diisi';
+    // }
+    
+    if (empty($email)) {
+        $errors[] = 'Email harus diisi';
+    } elseif (!isValidEmail($email)) {
+        $errors[] = 'Email tidak valid';
+    } elseif ($user->emailExists($email)) {
+        $errors[] = 'Email sudah terdaftar';
+    }
+    
+    // if (empty($phone)) {
+    //     $errors[] = 'Nomor telepon harus diisi';
+    // } elseif (!preg_match('/^[0-9]{10,13}$/', preg_replace('/[^0-9]/', '', $phone))) {
+    //     $errors[] = 'Nomor telepon tidak valid';
+    // }
+    
+    if (empty($password)) {
+        $errors[] = 'Password harus diisi';
+    } elseif (strlen($password) < 8) {
+        $errors[] = 'Password minimal 8 karakter';
+    }
+    
+    if ($password !== $confirmPassword) {
+        $errors[] = 'Password tidak cocok';
+    }
+    
+    // if (!$terms) {
+    //     $errors[] = 'Anda harus menyetujui syarat dan ketentuan';
+    // }
+    
+    if (empty($errors)) {
+        // Combine first and last name
+        $fullName = $firstName . ' ' . $lastName;
+        
+        // Register user
+        if ($user->register($fullName, $email, $password)) {
+            // Set success message
+            $_SESSION['success_message'] = 'Pendaftaran berhasil! Silakan login.';
+            
+            // Redirect to login page
+            header('Location: login.php');
+            exit();
+        } else {
+            $error_message = 'Pendaftaran gagal. Silakan coba lagi.';
+        }
+    } else {
+        $error_message = implode('<br>', $errors);
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -45,6 +119,7 @@
             align-items: center;
             justify-content: center;
             padding: 20px 0;
+
         }
         
         /* Navbar Styles */
@@ -106,7 +181,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            max-height: 850px;
+            max-height: 700px;
             overflow-y: auto;
         }
         
@@ -467,6 +542,7 @@
         
         .hero-content {
             position: relative;
+            
             z-index: 1;
             text-align: center;
         }
@@ -613,7 +689,7 @@
                         <a class="nav-link" href="#"><i class="bi bi-grid"></i> Kategori</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-plus-circle"></i> Pasang Iklan</a>
+                        <a class="nav-link" href="post-ad.php"><i class="bi bi-plus-circle"></i> Pasang Iklan</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-heart"></i> Favorit</a>
@@ -642,57 +718,46 @@
                 </div>
                 
                 <!-- Alert Messages -->
-                <div class="alert alert-danger d-none" id="errorAlert">
+                <?php if (isset($error_message)): ?>
+                <div class="alert alert-danger">
                     <i class="bi bi-exclamation-circle me-2"></i>
-                    <span id="errorMessage">Pendaftaran gagal! Silakan periksa kembali data Anda.</span>
+                    <?php echo $error_message; ?>
                 </div>
+                <?php endif; ?>
                 
-                <div class="alert alert-success d-none" id="successAlert">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <span id="successMessage">Pendaftaran berhasil! Mengalihkan ke halaman login...</span>
-                </div>
-                
-                <form id="registerForm" novalidate>
+                <form id="registerForm" method="POST" action="register.php" novalidate>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-6 mt-2">
                             <div class="form-group">
-                                <label for="firstName" class="form-label">Nama Depan</label>
+                                <label for="firstName" class="form-label">Nama Lengkap</label>
                                 <div class="input-group">
                                     <i class="bi bi-person input-icon"></i>
-                                    <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Masukkan nama depan" required>
-                                    <div class="invalid-feedback">Nama depan harus diisi</div>
+                                    <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Masukkan nama depan" value="<?php echo isset($_POST['firstName']) ? htmlspecialchars($_POST['firstName']) : ''; ?>" required>
+                                    <div class="invalid-feedback">Nama Lengkap Anda harus diisi</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <!-- <div class="col-md-6">
                             <div class="form-group">
                                 <label for="lastName" class="form-label">Nama Belakang</label>
                                 <div class="input-group">
                                     <i class="bi bi-person input-icon"></i>
-                                    <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Masukkan nama belakang" required>
+                                    <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Masukkan nama belakang" value="<?php echo isset($_POST['lastName']) ? htmlspecialchars($_POST['lastName']) : ''; ?>" required>
                                     <div class="invalid-feedback">Nama belakang harus diisi</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <div class="input-group">
                             <i class="bi bi-envelope input-icon"></i>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email Anda" required>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email Anda" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
                             <div class="invalid-feedback">Email tidak valid</div>
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="phone" class="form-label">Nomor Telepon</label>
-                        <div class="input-group">
-                            <i class="bi bi-telephone input-icon"></i>
-                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="Masukkan nomor telepon" required>
-                            <div class="invalid-feedback">Nomor telepon harus diisi</div>
-                        </div>
-                    </div>
                     
                     <div class="form-group">
                         <label for="password" class="form-label">Password</label>
@@ -724,8 +789,8 @@
                         <div class="invalid-feedback">Password tidak cocok</div>
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
+                    <!-- <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="terms" name="terms" <?php echo isset($_POST['terms']) ? 'checked' : ''; ?> required>
                         <label class="form-check-label" for="terms">
                             Saya menyetujui <a href="#">Syarat dan Ketentuan</a> serta <a href="#">Kebijakan Privasi</a> KF OLX
                         </label>
@@ -733,11 +798,11 @@
                     </div>
                     
                     <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="newsletter" name="newsletter">
+                        <input type="checkbox" class="form-check-input" id="newsletter" name="newsletter" <?php echo isset($_POST['newsletter']) ? 'checked' : ''; ?>>
                         <label class="form-check-label" for="newsletter">
                             Saya ingin menerima newsletter dan penawaran menarik dari KF OLX
                         </label>
-                    </div>
+                    </div> -->
                     
                     <button type="submit" class="btn-register" id="registerBtn">
                         <i class="bi bi-person-plus me-2"></i>
@@ -853,17 +918,11 @@
         
         // Handle form submission
         document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
             const form = e.target;
             const registerBtn = document.getElementById('registerBtn');
-            const errorAlert = document.getElementById('errorAlert');
-            const successAlert = document.getElementById('successAlert');
             
             // Clear previous validation
             form.classList.remove('was-validated');
-            errorAlert.classList.add('d-none');
-            successAlert.classList.add('d-none');
             
             // Check password match
             const password = document.getElementById('password').value;
@@ -871,6 +930,7 @@
             
             if (password !== confirmPassword) {
                 document.getElementById('confirmPassword').classList.add('is-invalid');
+                e.preventDefault();
                 return;
             } else {
                 document.getElementById('confirmPassword').classList.remove('is-invalid');
@@ -879,6 +939,7 @@
             // Form validation
             if (!form.checkValidity()) {
                 form.classList.add('was-validated');
+                e.preventDefault();
                 return;
             }
             
@@ -886,21 +947,7 @@
             registerBtn.classList.add('loading');
             registerBtn.disabled = true;
             
-            // Simulate API call
-            setTimeout(() => {
-                // Remove loading state
-                registerBtn.classList.remove('loading');
-                registerBtn.disabled = false;
-                
-                // Success
-                successAlert.classList.remove('d-none');
-                document.getElementById('successMessage').textContent = 'Pendaftaran berhasil! Mengalihkan ke halaman login...';
-                
-                // Redirect after 2 seconds
-                setTimeout(() => {
-                    window.location.href = 'login.php';
-                }, 2000);
-            }, 1500);
+            // Form will be submitted normally
         });
         
         // Social login handlers
