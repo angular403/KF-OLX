@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstName = sanitizeInput($_POST['firstName'] ?? '');
     $lastName = sanitizeInput($_POST['lastName'] ?? '');
     $email = sanitizeInput($_POST['email'] ?? '');
+    $whatsapp = sanitizeInput($_POST['whatsapp'] ?? '');
     $phone = sanitizeInput($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirmPassword'] ?? '';
@@ -30,13 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Email tidak valid';
     } elseif ($user->emailExists($email)) {
         $errors[] = 'Email sudah terdaftar';
-    }
+    } 
     
-    // if (empty($phone)) {
-    //     $errors[] = 'Nomor telepon harus diisi';
-    // } elseif (!preg_match('/^[0-9]{10,13}$/', preg_replace('/[^0-9]/', '', $phone))) {
-    //     $errors[] = 'Nomor telepon tidak valid';
-    // }
+    if (empty($whatsapp)) {
+        $errors[] = 'Nomor Whatsapp harus diisi';
+    } elseif (!preg_match('/^[0-9]{10,13}$/', preg_replace('/[^0-9]/', '', $whatsapp))) {
+        $errors[] = 'Nomor Whatsapp tidak valid';
+    }
     
     if (empty($password)) {
         $errors[] = 'Password harus diisi';
@@ -727,34 +728,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 <form id="registerForm" method="POST" action="register.php" novalidate>
                     <div class="row">
-                        <div class="col-md-6 mt-2">
+                    
+
                             <div class="form-group">
+                                <br>
                                 <label for="firstName" class="form-label">Nama Lengkap</label>
                                 <div class="input-group">
                                     <i class="bi bi-person input-icon"></i>
-                                    <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Masukkan nama depan" value="<?php echo isset($_POST['firstName']) ? htmlspecialchars($_POST['firstName']) : ''; ?>" required>
+                                    <input type="text" autocomplete="off"  class="form-control" id="firstName" name="firstName" placeholder="Masukkan nama depan" value="<?php echo isset($_POST['firstName']) ? htmlspecialchars($_POST['firstName']) : ''; ?>" required>
                                     <div class="invalid-feedback">Nama Lengkap Anda harus diisi</div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="lastName" class="form-label">Nama Belakang</label>
-                                <div class="input-group">
-                                    <i class="bi bi-person input-icon"></i>
-                                    <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Masukkan nama belakang" value="<?php echo isset($_POST['lastName']) ? htmlspecialchars($_POST['lastName']) : ''; ?>" required>
-                                    <div class="invalid-feedback">Nama belakang harus diisi</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div> -->
+                       
+                
                     
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <div class="input-group">
                             <i class="bi bi-envelope input-icon"></i>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email Anda" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
+                            <input type="email" class="form-control"  autocomplete="off" id="email" name="email" placeholder="Masukkan email Anda" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
                             <div class="invalid-feedback">Email tidak valid</div>
+                        </div>
+                    </div>
+                    
+
+                    <div class="form-group">
+                        <label for="whatsapp" class="form-label">Whatsapp</label>
+                        <div class="input-group">
+                            <i class="bi bi-phone input-icon"></i>
+                            <input type="text" class="form-control" id="whatsapp" name="whatsapp" placeholder="(+62)" value="<?php echo isset($_POST['whatsapp']) ? htmlspecialchars($_POST['whatsapp']) : ''; ?>" required>
+                            <div class="invalid-feedback">Nomor Whatsapp tidak valid</div>
                         </div>
                     </div>
                     
@@ -809,29 +812,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Daftar Sekarang
                     </button>
                 </form>
-                
-                <div class="divider">
-                    <span>atau daftar dengan</span>
-                </div>
-                
-                <div class="social-login">
-                    <a href="#" class="btn-social btn-google">
-                        <i class="bi bi-google"></i>
-                        Google
-                    </a>
-                    <a href="#" class="btn-social btn-facebook">
-                        <i class="bi bi-facebook"></i>
-                        Facebook
-                    </a>
-                </div>
-                
+
                 <div class="login-link">
                     Sudah punya akun? <a href="login.php">Masuk di sini</a>
                 </div>
             </div>
             
             <!-- Right Side - Hero -->
-            <div class="register-hero-side">
+            <!-- <div class="register-hero-side">
                 <div class="hero-content">
                     <i class="bi bi-person-plus hero-icon"></i>
                     <h2 class="hero-title">Bergabung dengan Komunitas Terpercaya</h2>
@@ -858,7 +846,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 

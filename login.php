@@ -1,3 +1,63 @@
+<?php
+require_once 'config.php';
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get and sanitize form data
+    $email = sanitizeInput($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']) ? 1 : 0;
+    
+    // Validation
+    $errors = [];
+    
+    if (empty($email)) {
+        $errors[] = 'Email harus diisi';
+    } elseif (!isValidEmail($email)) {
+        $errors[] = 'Email tidak valid';
+    }
+    
+    if (empty($password)) {
+        $errors[] = 'Password harus diisi';
+    }
+    
+    if (empty($errors)) {
+        // Attempt login
+        $user_data = $user->login($email, $password);
+        
+        if ($user_data) {
+            // Set session
+            $_SESSION['user_id'] = $user_data['id'];
+            $_SESSION['user_name'] = $user_data['name'];
+            $_SESSION['user_email'] = $user_data['email'];
+            $_SESSION['logged_in'] = true;
+            
+            // Set remember me cookie if checked
+            if ($remember) {
+                $remember_token = generateRandomString(32);
+                setcookie('remember_token', $remember_token, time() + (30 * 24 * 60 * 60), '/'); // 30 days
+                // You might want to store this token in database for better security
+            }
+            
+            // Redirect to dashboard or home
+            $redirect_url = isset($_SESSION['redirect_url']) ? $_SESSION['redirect_url'] : 'index.php';
+            unset($_SESSION['redirect_url']);
+            header('Location: ' . $redirect_url);
+            exit();
+        } else {
+            $error_message = 'Email atau password salah';
+        }
+    } else {
+        $error_message = implode('<br>', $errors);
+    }
+}
+
+// Check if user is already logged in
+if (isLoggedIn()) {
+    header('Location: index.php');
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -12,7 +72,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- style css -->
+    
     <style>
         :root {
             --primary-color: #2563eb;
@@ -519,22 +579,29 @@
                 </div>
                 
                 <!-- Alert Messages -->
-                <div class="alert alert-danger d-none" id="errorAlert">
+                <?php if (isset($error_message)): ?>
+                <div class="alert alert-danger">
                     <i class="bi bi-exclamation-circle me-2"></i>
-                    <span id="errorMessage">Email atau password salah!</span>
+                    <?php echo $error_message; ?>
                 </div>
+                <?php endif; ?>
                 
-                <div class="alert alert-success d-none" id="successAlert">
+                <?php if (isset($_SESSION['success_message'])): ?>
+                <div class="alert alert-success">
                     <i class="bi bi-check-circle me-2"></i>
-                    <span id="successMessage">Login berhasil!</span>
+                    <?php 
+                    echo $_SESSION['success_message'];
+                    unset($_SESSION['success_message']);
+                    ?>
                 </div>
+                <?php endif; ?>
                 
-                <form id="loginForm">
+                <form id="loginForm" method="POST" action="login.php">
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <div class="input-group">
                             <i class="bi bi-envelope input-icon"></i>
-                            <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email Anda" required>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email Anda" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
                         </div>
                     </div>
                     
@@ -549,9 +616,9 @@
                         </div>
                     </div>
                     
-                    <div class="form-check">
+                    <div class="form-check d-flex justify-content-between align-items-center">
                         <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember" <?php echo isset($_POST['remember']) ? 'checked' : ''; ?>>
                             <label class="form-check-label" for="remember">
                                 Ingat saya
                             </label>
@@ -635,44 +702,21 @@
         
         // Handle form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const form = e.target;
             const loginBtn = document.getElementById('loginBtn');
-            const errorAlert = document.getElementById('errorAlert');
-            const successAlert = document.getElementById('successAlert');
             
-            // Hide alerts
-            errorAlert.classList.add('d-none');
-            successAlert.classList.add('d-none');
+            // Form validation
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                form.reportValidity();
+                return;
+            }
             
             // Show loading state
             loginBtn.classList.add('loading');
             loginBtn.disabled = true;
             
-            // Simulate API call
-            setTimeout(() => {
-                // Remove loading state
-                loginBtn.classList.remove('loading');
-                loginBtn.disabled = false;
-                
-                // Simulate validation (replace with actual validation)
-                if (email === 'user@example.com' && password === 'password') {
-                    // Success
-                    successAlert.classList.remove('d-none');
-                    document.getElementById('successMessage').textContent = 'Login berhasil! Mengalihkan...';
-                    
-                    // Redirect after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = 'index.php';
-                    }, 2000);
-                } else {
-                    // Error
-                    errorAlert.classList.remove('d-none');
-                    document.getElementById('errorMessage').textContent = 'Email atau password salah!';
-                }
-            }, 1500);
+            // Form will be submitted normally to PHP backend
         });
         
         // Social login handlers

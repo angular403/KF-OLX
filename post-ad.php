@@ -1,3 +1,110 @@
+<?php
+require_once 'config.php';
+
+// Check if user is logged in
+requireLogin();
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get and sanitize form data
+    $category_id = sanitizeInput($_POST['category'] ?? '');
+    $title = sanitizeInput($_POST['title'] ?? '');
+    $description = sanitizeInput($_POST['description'] ?? '');
+    $price = sanitizeInput($_POST['price'] ?? '');
+    $location = sanitizeInput($_POST['location'] ?? '');
+    
+    // Validation
+    $errors = [];
+    
+    if (empty($category_id)) {
+        $errors[] = 'Kategori harus dipilih';
+    }
+    
+    if (empty($title)) {
+        $errors[] = 'Judul iklan harus diisi';
+    } elseif (strlen($title) > 150) {
+        $errors[] = 'Judul iklan maksimal 150 karakter';
+    }
+    
+    if (empty($description)) {
+        $errors[] = 'Deskripsi harus diisi';
+    } elseif (strlen($description) > 2000) {
+        $errors[] = 'Deskripsi maksimal 2000 karakter';
+    }
+    
+    if (empty($price) || !is_numeric($price) || $price < 0) {
+        $errors[] = 'Harga harus diisi dengan angka yang valid';
+    }
+    
+    if (empty($location)) {
+        $errors[] = 'Lokasi harus diisi';
+    }
+    
+    // Handle image uploads
+    $uploaded_images = [];
+    if (isset($_FILES['images']) && !empty($_FILES['images']['name'][0])) {
+        $files = $_FILES['images'];
+        $file_count = count($files['name']);
+        
+        for ($i = 0; $i < $file_count; $i++) {
+            if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                $file = [
+                    'name' => $files['name'][$i],
+                    'type' => $files['type'][$i],
+                    'tmp_name' => $files['tmp_name'][$i],
+                    'error' => $files['error'][$i],
+                    'size' => $files['size'][$i]
+                ];
+                
+                $upload_result = uploadFile($file, UPLOAD_PATH . 'ads/', ['jpg', 'jpeg', 'png', 'gif'], MAX_FILE_SIZE);
+                
+                if ($upload_result['success']) {
+                    $uploaded_images[] = $upload_result['file_path'];
+                } else {
+                    $errors[] = $upload_result['message'];
+                }
+            }
+        }
+    }
+    
+    if (empty($uploaded_images)) {
+        $errors[] = 'Minimal 1 foto produk harus diupload';
+    }
+    
+    if (empty($errors)) {
+        // Create ad
+        $ad_id = $ad->createAd(
+            $_SESSION['user_id'],
+            $category_id,
+            $title,
+            $description,
+            $price,
+            $location
+        );
+        
+        if ($ad_id) {
+            // Save images
+            foreach ($uploaded_images as $image_path) {
+                $adImage->addImage($ad_id, $image_path);
+            }
+            
+            // Set success message
+            $_SESSION['success_message'] = 'Iklan berhasil dipasang!';
+            
+            // Redirect to ad detail or user ads
+            header('Location: index.php');
+            exit();
+        } else {
+            $error_message = 'Gagal memasang iklan. Silakan coba lagi.';
+        }
+    } else {
+        $error_message = implode('<br>', $errors);
+    }
+}
+
+// Get categories for dropdown
+$categories_list = $category->getAllCategories();
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -509,23 +616,25 @@
                         <a class="nav-link" href="index.php"><i class="bi bi-house"></i> Beranda</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="bi bi-grid"></i> Kategori</a>
+                        <a class="nav-link" href="#"><i class="bi bi-grid"></i> Pasang Iklan</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="post-ad.php"><i class="bi bi-plus-circle"></i> Pasang Iklan</a>
+                        <a class="nav-link" href="detail.php"><i class="bi bi-plus-circle"></i> Iklan Saya</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-heart"></i> Favorit</a>
                     </li>
+                    <li>
+                             <?php if (isset($_SESSION['user_id'])): ?>
+                        <span>Halo, <?= htmlspecialchars($_SESSION['user_name']) ?></span>
+                        <a href="logout.php" class="btn">Logout</a>
+                    <?php else: ?>
+                        <a href="login.html" class="btn">Login</a>
+                        <a href="register.html" class="btn btn-outline">Register</a>
+                    <?php endif; ?>
+                    </li>
                 </ul>
-                <div class="d-flex gap-2 align-items-center">
-                    <a href="login.php" class="btn btn-outline-primary px-4 py-2">
-                        <i class="bi bi-box-arrow-in-right me-2"></i>Masuk
-                    </a>
-                    <a href="register.php" class="btn btn-primary px-4 py-2">
-                        <i class="bi bi-person-plus me-2"></i>Daftar
-                    </a>
-                </div>
+       
             </div>
         </div>
     </nav>
@@ -538,17 +647,24 @@
         </div>
         
         <!-- Alert Messages -->
-        <div class="alert alert-danger d-none" id="errorAlert">
+        <?php if (isset($error_message)): ?>
+        <div class="alert alert-danger">
             <i class="bi bi-exclamation-circle me-2"></i>
-            <span id="errorMessage">Terjadi kesalahan. Silakan periksa kembali data Anda.</span>
+            <?php echo $error_message; ?>
         </div>
+        <?php endif; ?>
         
-        <div class="alert alert-success d-none" id="successAlert">
+        <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success">
             <i class="bi bi-check-circle me-2"></i>
-            <span id="successMessage">Iklan berhasil dipasang! Mengalihkan ke halaman iklan Anda...</span>
+            <?php 
+            echo $_SESSION['success_message'];
+            unset($_SESSION['success_message']);
+            ?>
         </div>
+        <?php endif; ?>
         
-        <form id="postAdForm" novalidate>
+        <form id="postAdForm" method="POST" enctype="multipart/form-data" novalidate>
             <!-- Informasi Dasar -->
             <div class="form-card">
                 <div class="section-title">
@@ -560,47 +676,28 @@
                 
                 <div class="form-group">
                     <label for="category" class="form-label">Kategori <span class="required">*</span></label>
-                    <div class="category-grid">
-                        <div class="category-item" data-category="1">
-                            <i class="bi bi-phone category-icon"></i>
-                            <div class="category-name">Elektronik</div>
-                        </div>
-                        <div class="category-item" data-category="2">
-                            <i class="bi bi-car-front category-icon"></i>
-                            <div class="category-name">Kendaraan</div>
-                        </div>
-                        <div class="category-item" data-category="3">
-                            <i class="bi bi-house-door category-icon"></i>
-                            <div class="category-name">Properti</div>
-                        </div>
-                        <div class="category-item" data-category="4">
-                            <i class="bi bi-bag category-icon"></i>
-                            <div class="category-name">Fashion</div>
-                        </div>
-                        <div class="category-item" data-category="5">
-                            <i class="bi bi-controller category-icon"></i>
-                            <div class="category-name">Hobi</div>
-                        </div>
-                        <div class="category-item" data-category="6">
-                            <i class="bi bi-book category-icon"></i>
-                            <div class="category-name">Buku</div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="category" name="category" required>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="">Pilih Kategori</option>
+                        <?php foreach ($categories_list as $cat): ?>
+                        <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_POST['category']) && $_POST['category'] == $cat['id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($cat['name']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                     <div class="invalid-feedback">Silakan pilih kategori</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="title" class="form-label">Judul Iklan <span class="required">*</span></label>
-                    <input type="text" class="form-control" id="title" name="title" placeholder="Contoh: iPhone 13 Pro Max 256GB Mulus" maxlength="150" required>
-                    <div class="char-counter" id="titleCounter">0 / 150</div>
+                    <input type="text" class="form-control" id="title" name="title" placeholder="Contoh: iPhone 13 Pro Max 256GB Mulus" maxlength="150" value="<?php echo isset($_POST['title']) ? htmlspecialchars($_POST['title']) : ''; ?>" required>
+                    <div class="char-counter" id="titleCounter"><?php echo strlen($_POST['title'] ?? ''); ?> / 150</div>
                     <div class="invalid-feedback">Judul iklan harus diisi</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="description" class="form-label">Deskripsi <span class="required">*</span></label>
-                    <textarea class="form-control" id="description" name="description" rows="6" placeholder="Jelaskan kondisi barang, spesifikasi, kelengkapan, dan informasi penting lainnya..." maxlength="2000" required></textarea>
-                    <div class="char-counter" id="descCounter">0 / 2000</div>
+                    <textarea class="form-control" id="description" name="description" rows="6" placeholder="Jelaskan kondisi barang, spesifikasi, kelengkapan, dan informasi penting lainnya..." maxlength="2000" required><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
+                    <div class="char-counter" id="descCounter"><?php echo strlen($_POST['description'] ?? ''); ?> / 2000</div>
                     <div class="invalid-feedback">Deskripsi harus diisi</div>
                 </div>
             </div>
@@ -619,7 +716,7 @@
                     <div class="upload-text">Drag & drop foto di sini</div>
                     <div class="upload-subtext">atau klik untuk memilih file</div>
                     <button type="button" class="btn-upload">Pilih Foto</button>
-                    <input type="file" id="imageInput" multiple accept="image/*" style="display: none;">
+                    <input type="file" id="imageInput" name="images[]" multiple accept="image/*" style="display: none;">
                 </div>
                 
                 <div class="image-preview" id="imagePreview"></div>
@@ -643,17 +740,95 @@
                     <label for="price" class="form-label">Harga <span class="required">*</span></label>
                     <div class="price-input-group">
                         <span class="price-prefix">Rp</span>
-                        <input type="number" class="form-control price-input" id="price" name="price" placeholder="0" min="0" required>
+                        <input type="number" class="form-control price-input" id="price" name="price" placeholder="0" min="0" value="<?php echo isset($_POST['price']) ? htmlspecialchars($_POST['price']) : ''; ?>" required>
                     </div>
                     <div class="invalid-feedback">Harga harus diisi</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="location" class="form-label">Lokasi <span class="required">*</span></label>
-                    <div class="location-input-group">
-                        <i class="bi bi-geo-alt location-icon"></i>
-                        <input type="text" class="form-control location-input" id="location" name="location" placeholder="Contoh: Jakarta Selatan, Indonesia" required>
-                    </div>
+                    <select class="form-select" id="location" name="location" required>
+                        <option value="">Pilih Lokasi</option>
+                        <?php 
+                        // Static locations based on database structure
+                        $locations = [
+                            'Jakarta Pusat, DKI Jakarta',
+                            'Jakarta Utara, DKI Jakarta', 
+                            'Jakarta Barat, DKI Jakarta',
+                            'Jakarta Selatan, DKI Jakarta',
+                            'Jakarta Timur, DKI Jakarta',
+                            'Bandung, Jawa Barat',
+                            'Bogor, Jawa Barat',
+                            'Depok, Jawa Barat',
+                            'Bekasi, Jawa Barat',
+                            'Cimahi, Jawa Barat',
+                            'Sukabumi, Jawa Barat',
+                            'Cirebon, Jawa Barat',
+                            'Tangerang, Banten',
+                            'Tangerang Selatan, Banten',
+                            'Semarang, Jawa Tengah',
+                            'Surakarta (Solo), Jawa Tengah',
+                            'Magelang, Jawa Tengah',
+                            'Pekalongan, Jawa Tengah',
+                            'Salatiga, Jawa Tengah',
+                            'Tegal, Jawa Tengah',
+                            'Yogyakarta, DI Yogyakarta',
+                            'Surabaya, Jawa Timur',
+                            'Malang, Jawa Timur',
+                            'Kediri, Jawa Timur',
+                            'Madiun, Jawa Timur',
+                            'Jember, Jawa Timur',
+                            'Batu, Jawa Timur',
+                            'Blitar, Jawa Timur',
+                            'Probolinggo, Jawa Timur',
+                            'Pasuruan, Jawa Timur',
+                            'Mojokerto, Jawa Timur',
+                            'Medan, Sumatera Utara',
+                            'Binjai, Sumatera Utara',
+                            'Tebingtinggi, Sumatera Utara',
+                            'Pematangsiantar, Sumatera Utara',
+                            'Padangsidimpuan, Sumatera Utara',
+                            'Padang, Sumatera Barat',
+                            'Bukittinggi, Sumatera Barat',
+                            'Payakumbuh, Sumatera Barat',
+                            'Pariaman, Sumatera Barat',
+                            'Solok, Sumatera Barat',
+                            'Pekanbaru, Riau',
+                            'Dumai, Riau',
+                            'Bengkalis, Riau',
+                            'Palembang, Sumatera Selatan',
+                            'Prabumulih, Sumatera Selatan',
+                            'Lubuklinggau, Sumatera Selatan',
+                            'Pagar Alam, Sumatera Selatan',
+                            'Bandar Lampung, Lampung',
+                            'Metro, Lampung',
+                            'Denpasar, Bali',
+                            'Badung, Bali',
+                            'Gianyar, Bali',
+                            'Tabanan, Bali',
+                            'Banjarmasin, Kalimantan Selatan',
+                            'Balikpapan, Kalimantan Timur',
+                            'Samarinda, Kalimantan Timur',
+                            'Pontianak, Kalimantan Barat',
+                            'Palangkaraya, Kalimantan Tengah',
+                            'Makassar, Sulawesi Selatan',
+                            'Kendari, Sulawesi Tenggara',
+                            'Palu, Sulawesi Tengah',
+                            'Manado, Sulawesi Utara',
+                            'Gorontalo, Gorontalo',
+                            'Mataram, Nusa Tenggara Barat',
+                            'Kupang, Nusa Tenggara Timur',
+                            'Jayapura, Papua',
+                            'Sorong, Papua Barat'
+                        ];
+                        
+                        foreach ($locations as $loc): 
+                        ?>
+                        <option value="<?php echo htmlspecialchars($loc); ?>" <?php echo (isset($_POST['location']) && $_POST['location'] == $loc) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($loc); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                     <div class="invalid-feedback">Lokasi harus diisi</div>
                 </div>
             </div>
@@ -785,34 +960,21 @@
         
         // Form Submission
         document.getElementById('postAdForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
             const form = e.target;
             const submitBtn = document.getElementById('submitBtn');
-            const errorAlert = document.getElementById('errorAlert');
-            const successAlert = document.getElementById('successAlert');
-            
-            // Clear previous validation
-            form.classList.remove('was-validated');
-            errorAlert.classList.add('d-none');
-            successAlert.classList.add('d-none');
-            
-            // Check category selection
-            if (!document.getElementById('category').value) {
-                document.getElementById('category').classList.add('is-invalid');
-                return;
-            }
-            
-            // Check image upload
-            if (uploadedImages.length === 0) {
-                document.getElementById('errorAlert').classList.remove('d-none');
-                document.getElementById('errorMessage').textContent = 'Silakan upload minimal 1 foto produk';
-                return;
-            }
             
             // Form validation
             if (!form.checkValidity()) {
-                form.classList.add('was-validated');
+                e.preventDefault();
+                form.reportValidity();
+                return;
+            }
+            
+            // Check if images are selected
+            const imageInput = document.getElementById('imageInput');
+            if (imageInput.files.length === 0) {
+                e.preventDefault();
+                alert('Silakan upload minimal 1 foto produk');
                 return;
             }
             
@@ -820,21 +982,7 @@
             submitBtn.classList.add('loading');
             submitBtn.disabled = true;
             
-            // Simulate API call
-            setTimeout(() => {
-                // Remove loading state
-                submitBtn.classList.remove('loading');
-                submitBtn.disabled = false;
-                
-                // Success
-                successAlert.classList.remove('d-none');
-                document.getElementById('successMessage').textContent = 'Iklan berhasil dipasang! Mengalihkan ke halaman iklan Anda...';
-                
-                // Redirect after 2 seconds
-                setTimeout(() => {
-                    window.location.href = 'index.php';
-                }, 2000);
-            }, 2000);
+            // Form will be submitted normally to PHP backend
         });
         
         // Price formatting

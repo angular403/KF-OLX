@@ -1,10 +1,5 @@
 <?php
-/**
- * Database Configuration for KF OLX
- * Using PDO with MySQL
- */
 
-// Database Configuration
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'kf_olx');
 define('DB_USER', 'root');
@@ -215,9 +210,10 @@ class Ad {
             $stmt->bindParam(':price', $price);
             $stmt->bindParam(':location', $location);
             
-            $stmt->execute();
-            
-            return $this->conn->lastInsertId();
+            if ($stmt->execute()) {
+                return $this->conn->lastInsertId();
+            }
+            return false;
         } catch(PDOException $e) {
             return false;
         }
@@ -584,11 +580,108 @@ if (!$db) {
     die("Database connection failed. Please check your configuration.");
 }
 
+// Location Class
+class Location {
+    private $conn;
+    
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+    
+    // Get all locations
+    public function getAllLocations() {
+        try {
+            $sql = "SELECT * FROM locations WHERE is_active = 1 ORDER BY province, city, name";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            
+            return $stmt->fetchAll();
+        } catch(PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Get locations by province
+    public function getLocationsByProvince($province) {
+        try {
+            $sql = "SELECT * FROM locations WHERE province = :province AND is_active = 1 ORDER BY city, name";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':province', $province);
+            $stmt->execute();
+            
+            return $stmt->fetchAll();
+        } catch(PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Get all provinces
+    public function getAllProvinces() {
+        try {
+            $sql = "SELECT DISTINCT province FROM locations WHERE is_active = 1 ORDER BY province";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch(PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Get cities by province
+    public function getCitiesByProvince($province) {
+        try {
+            $sql = "SELECT DISTINCT city FROM locations WHERE province = :province AND is_active = 1 ORDER BY city";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':province', $province);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch(PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Get location by ID
+    public function getLocationById($id) {
+        try {
+            $sql = "SELECT * FROM locations WHERE id = :id AND is_active = 1";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            return $stmt->fetch();
+        } catch(PDOException $e) {
+            return null;
+        }
+    }
+    
+    // Search locations
+    public function searchLocations($query) {
+        try {
+            $sql = "SELECT * FROM locations WHERE 
+                    (name LIKE :query OR city LIKE :query OR province LIKE :query) 
+                    AND is_active = 1 
+                    ORDER BY province, city, name 
+                    LIMIT 20";
+            $stmt = $this->conn->prepare($sql);
+            $search_query = "%{$query}%";
+            $stmt->bindParam(':query', $search_query);
+            $stmt->execute();
+            
+            return $stmt->fetchAll();
+        } catch(PDOException $e) {
+            return [];
+        }
+    }
+}
+
 // Initialize classes
 $user = new User($db);
 $category = new Category($db);
 $ad = new Ad($db);
 $adImage = new AdImage($db);
+$location = new Location($db);
 
 // Check if user is logged in
 function isLoggedIn() {
